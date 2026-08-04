@@ -1,5 +1,7 @@
 import logging
 import os
+from pathlib import Path
+
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
     Application,
@@ -7,6 +9,10 @@ from telegram.ext import (
     CommandHandler,
     ContextTypes,
 )
+
+# Dossier où se trouve ce script, pour retrouver les images jointes
+BASE_DIR = Path(__file__).resolve().parent
+PUPRIME_TRANSFER_IMAGE = BASE_DIR / "puprime_transfer_ib.jpg"
 
 # ============================================================
 # CONFIGURATION - Modifie uniquement cette section si besoin
@@ -118,10 +124,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Gère tous les clics sur les boutons du bot."""
+    """Gère tous les clics sur les boutons du bot.
+
+    Chaque étape envoie un NOUVEAU message (au lieu de modifier l'ancien),
+    afin que l'historique complet du parcours reste visible pour l'utilisateur.
+    """
     query = update.callback_query
     await query.answer()
     data = query.data
+    chat_id = query.message.chat_id
 
     # --- Choix du marché ---
     if data == "market_forex":
@@ -129,8 +140,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             [InlineKeyboardButton("✅ J'ai déjà un compte", callback_data="forex_has")],
             [InlineKeyboardButton("🆕 Je n'ai pas de compte", callback_data="forex_no")],
         ]
-        await query.edit_message_text(
-            "💱 *Forex sélectionné*\n\nAs-tu déjà un compte de trading chez PU Prime ?",
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="💱 *Forex sélectionné*\n\nAs-tu déjà un compte de trading chez PU Prime ?",
             parse_mode="Markdown",
             reply_markup=InlineKeyboardMarkup(keyboard),
         )
@@ -140,8 +152,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             [InlineKeyboardButton("Deriv", callback_data="broker_deriv")],
             [InlineKeyboardButton("Weltrade", callback_data="broker_weltrade")],
         ]
-        await query.edit_message_text(
-            "📊 *Indices Synthétiques sélectionnés*\n\nQuel broker veux-tu utiliser ?",
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="📊 *Indices Synthétiques sélectionnés*\n\nQuel broker veux-tu utiliser ?",
             parse_mode="Markdown",
             reply_markup=InlineKeyboardMarkup(keyboard),
         )
@@ -152,8 +165,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             [InlineKeyboardButton("✅ J'ai déjà un compte", callback_data="deriv_has")],
             [InlineKeyboardButton("🆕 Je n'ai pas de compte", callback_data="deriv_no")],
         ]
-        await query.edit_message_text(
-            "🟢 *Deriv sélectionné*\n\nAs-tu déjà un compte de trading chez Deriv ?",
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="🟢 *Deriv sélectionné*\n\nAs-tu déjà un compte de trading chez Deriv ?",
             parse_mode="Markdown",
             reply_markup=InlineKeyboardMarkup(keyboard),
         )
@@ -163,25 +177,42 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             [InlineKeyboardButton("✅ J'ai déjà un compte", callback_data="weltrade_has")],
             [InlineKeyboardButton("🆕 Je n'ai pas de compte", callback_data="weltrade_no")],
         ]
-        await query.edit_message_text(
-            "🟡 *Weltrade sélectionné*\n\nAs-tu déjà un compte de trading chez Weltrade ?",
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="🟡 *Weltrade sélectionné*\n\nAs-tu déjà un compte de trading chez Weltrade ?",
             parse_mode="Markdown",
             reply_markup=InlineKeyboardMarkup(keyboard),
         )
 
     # --- Réponses finales (les 6 procédures) ---
     elif data == "forex_has":
-        await query.edit_message_text(FOREX_HAS_ACCOUNT, parse_mode="Markdown")
+        # Envoie d'abord la capture d'écran de la procédure, puis le texte
+        if PUPRIME_TRANSFER_IMAGE.exists():
+            with open(PUPRIME_TRANSFER_IMAGE, "rb") as photo:
+                await context.bot.send_photo(chat_id=chat_id, photo=photo)
+        await context.bot.send_message(
+            chat_id=chat_id, text=FOREX_HAS_ACCOUNT, parse_mode="Markdown"
+        )
     elif data == "forex_no":
-        await query.edit_message_text(FOREX_NO_ACCOUNT, parse_mode="Markdown")
+        await context.bot.send_message(
+            chat_id=chat_id, text=FOREX_NO_ACCOUNT, parse_mode="Markdown"
+        )
     elif data == "deriv_has":
-        await query.edit_message_text(DERIV_HAS_ACCOUNT, parse_mode="Markdown")
+        await context.bot.send_message(
+            chat_id=chat_id, text=DERIV_HAS_ACCOUNT, parse_mode="Markdown"
+        )
     elif data == "deriv_no":
-        await query.edit_message_text(DERIV_NO_ACCOUNT, parse_mode="Markdown")
+        await context.bot.send_message(
+            chat_id=chat_id, text=DERIV_NO_ACCOUNT, parse_mode="Markdown"
+        )
     elif data == "weltrade_has":
-        await query.edit_message_text(WELTRADE_HAS_ACCOUNT, parse_mode="Markdown")
+        await context.bot.send_message(
+            chat_id=chat_id, text=WELTRADE_HAS_ACCOUNT, parse_mode="Markdown"
+        )
     elif data == "weltrade_no":
-        await query.edit_message_text(WELTRADE_NO_ACCOUNT, parse_mode="Markdown")
+        await context.bot.send_message(
+            chat_id=chat_id, text=WELTRADE_NO_ACCOUNT, parse_mode="Markdown"
+        )
 
 
 async def restart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
