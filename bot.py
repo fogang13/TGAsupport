@@ -195,6 +195,15 @@ async def restart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 def main() -> None:
+    # Compatibilité Python 3.12+/3.14 : s'assurer qu'une boucle asyncio
+    # existe dans le thread principal avant que la librairie n'en cherche une.
+    import asyncio
+
+    try:
+        asyncio.get_event_loop()
+    except RuntimeError:
+        asyncio.set_event_loop(asyncio.new_event_loop())
+
     application = Application.builder().token(BOT_TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
