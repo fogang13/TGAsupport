@@ -32,6 +32,10 @@ PUPRIME_TRANSFER_IMAGES = [
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "8573272152:AAE1Cql3gE8IWCwckmWNXnANToHn-HfHEw4")
 ADMIN_USERNAME = "@TGA_support"
+# Version échappée pour l'affichage dans du texte Markdown (l'underscore
+# doit être protégé, sinon Telegram l'interprète comme une balise italique
+# et casse le nom d'utilisateur affiché / son lien cliquable).
+ADMIN_USERNAME_MD = ADMIN_USERNAME.replace("_", r"\_")
 
 # Libellés du menu persistant en bas de l'écran
 MENU_FOREX = "💱 Forex"
@@ -77,7 +81,7 @@ FOREX_NO_ACCOUNT = (
     "👉 https://www.puprime.partners/forex-trading-account/?affid=29071347\n\n"
     "2️⃣ Faire un dépôt de *100$ minimum* (500$ conseillé)\n\n"
     "3️⃣ Envoyer la capture d'écran de ton compte contenant le *numéro ID*\n\n"
-    f"Si tu es prêt, on procède à l'ouverture. Envoie ta capture directement à {ADMIN_USERNAME} 👍"
+    f"Si tu es prêt, on procède à l'ouverture. Envoie ta capture directement à {ADMIN_USERNAME_MD} 👍"
 )
 
 FOREX_HAS_ACCOUNT = (
@@ -92,7 +96,7 @@ FOREX_HAS_ACCOUNT = (
     "4️⃣ Dans \"New CPA ID / IB Number\" mets : *29071347*\n"
     "5️⃣ Dans \"Reason for Transfer\" écris : *Nouveau Partenaire*\n"
     "6️⃣ Clique sur *Submit*\n\n"
-    f"Une fois fait, envoie-moi une confirmation à {ADMIN_USERNAME} pour que je valide ton accès ✅"
+    f"Une fois fait, envoie-moi une confirmation à {ADMIN_USERNAME_MD} pour que je valide ton accès ✅"
 )
 
 # ---- Textes SYNTHETIQUES - DERIV ----
@@ -100,9 +104,9 @@ DERIV_NO_ACCOUNT = (
     "🟢 *Indices Synthétiques — Deriv — Création de compte*\n\n"
     "Pour intégrer notre groupe VIP Indices Synthétiques (Deriv), tu dois :\n\n"
     "1️⃣ Créer un compte *Deriv* avec notre lien (important) :\n"
-    "👉 https://partners.deriv.com/rx?sidc=3E33DCA0-53E8-4291-A650-73A152DF6BB1&utm_campaign=dynamicworks&utm_medium=affiliate&utm_source=CU27273\n\n"
+    "👉 `https://partners.deriv.com/rx?sidc=3E33DCA0-53E8-4291-A650-73A152DF6BB1&utm_campaign=dynamicworks&utm_medium=affiliate&utm_source=CU27273`\n\n"
     "2️⃣ Faire un dépôt de *30$ minimum* (250$ conseillé)\n\n"
-    f"3️⃣ Envoie-moi ton *email* de compte en message privé sur Telegram ({ADMIN_USERNAME}) pour vérification\n\n"
+    f"3️⃣ Envoie-moi ton *email* de compte en message privé sur Telegram ({ADMIN_USERNAME_MD}) pour vérification\n\n"
     "Une fois vérifié, tu seras ajouté au groupe VIP ✅"
 )
 
@@ -112,8 +116,8 @@ DERIV_HAS_ACCOUNT = (
     "1️⃣ Écris au *live chat / support Deriv*\n"
     "2️⃣ Dis que tu veux taguer ton compte sous le partenaire *FOGANG*\n"
     "3️⃣ Si un lien est demandé, envoie celui-ci :\n"
-    "👉 https://partners.deriv.com/rx?sidc=3E33DCA0-53E8-4291-A650-73A152DF6BB1&utm_campaign=dynamicworks&utm_medium=affiliate&utm_source=CU27273\n\n"
-    f"Une fois fait, envoie-moi une confirmation à {ADMIN_USERNAME} et je t'ajoute au groupe de "
+    "👉 `https://partners.deriv.com/rx?sidc=3E33DCA0-53E8-4291-A650-73A152DF6BB1&utm_campaign=dynamicworks&utm_medium=affiliate&utm_source=CU27273`\n\n"
+    f"Une fois fait, envoie-moi une confirmation à {ADMIN_USERNAME_MD} et je t'ajoute au groupe de "
     "signaux — c'est là-bas qu'on discutera aussi du copy trading 📈"
 )
 
@@ -125,7 +129,7 @@ WELTRADE_NO_ACCOUNT = (
     "👉 https://www.weltrade.com/?r1=ipartner&r2=68084&ibrefid=97343a9a-942c-4671-849a-95b05db4bb27\n\n"
     "2️⃣ Faire un dépôt de *40$ minimum* (250$ recommandé)\n\n"
     f"Une fois ton compte créé et le dépôt effectué, envoie-moi la confirmation en message "
-    f"privé sur Telegram ({ADMIN_USERNAME}) pour être ajouté au groupe ✅"
+    f"privé sur Telegram ({ADMIN_USERNAME_MD}) pour être ajouté au groupe ✅"
 )
 
 WELTRADE_HAS_ACCOUNT = (
@@ -135,7 +139,7 @@ WELTRADE_HAS_ACCOUNT = (
     "2️⃣ Dis que tu veux être tagué sous *FOGANG*\n"
     "3️⃣ Envoie ce lien s'ils le demandent :\n"
     "👉 https://www.weltrade.com/?r1=ipartner&r2=68084&ibrefid=97343a9a-942c-4671-849a-95b05db4bb27\n\n"
-    f"Une fois fait, envoie-moi une confirmation à {ADMIN_USERNAME} et je t'ajoute au groupe de signaux 📈"
+    f"Une fois fait, envoie-moi une confirmation à {ADMIN_USERNAME_MD} et je t'ajoute au groupe de signaux 📈"
 )
 
 # ============================================================
@@ -150,6 +154,24 @@ logger = logging.getLogger(__name__)
 # ============================================================
 # HANDLERS
 # ============================================================
+
+
+async def safe_send_message(context, chat_id, text, reply_markup=None):
+    """Envoie un message en Markdown, avec repli automatique en texte brut
+    si le Markdown est mal formé (ex: underscores non appariés dans un lien).
+    Cela évite qu'un message reste silencieusement bloqué."""
+    try:
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=text,
+            parse_mode="Markdown",
+            reply_markup=reply_markup,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Échec envoi Markdown (%s), repli en texte brut", exc)
+        await context.bot.send_message(
+            chat_id=chat_id, text=text, reply_markup=reply_markup
+        )
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -275,17 +297,17 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             chat_id=chat_id, text=FOREX_NO_ACCOUNT, parse_mode="Markdown"
         )
     elif data == "deriv_has":
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text=DERIV_HAS_ACCOUNT,
-            parse_mode="Markdown",
+        await safe_send_message(
+            context,
+            chat_id,
+            DERIV_HAS_ACCOUNT,
             reply_markup=build_vip_contact_keyboard("Deriv", has_account=True),
         )
     elif data == "deriv_no":
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text=DERIV_NO_ACCOUNT,
-            parse_mode="Markdown",
+        await safe_send_message(
+            context,
+            chat_id,
+            DERIV_NO_ACCOUNT,
             reply_markup=build_vip_contact_keyboard("Deriv", has_account=False),
         )
     elif data == "weltrade_has":
