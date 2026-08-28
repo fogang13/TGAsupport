@@ -289,13 +289,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             if image_path.exists():
                 with open(image_path, "rb") as photo:
                     await context.bot.send_photo(chat_id=chat_id, photo=photo)
-        await context.bot.send_message(
-            chat_id=chat_id, text=FOREX_HAS_ACCOUNT, parse_mode="Markdown"
-        )
+        await safe_send_message(context, chat_id, FOREX_HAS_ACCOUNT)
     elif data == "forex_no":
-        await context.bot.send_message(
-            chat_id=chat_id, text=FOREX_NO_ACCOUNT, parse_mode="Markdown"
-        )
+        await safe_send_message(context, chat_id, FOREX_NO_ACCOUNT)
     elif data == "deriv_has":
         await safe_send_message(
             context,
@@ -311,17 +307,17 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             reply_markup=build_vip_contact_keyboard("Deriv", has_account=False),
         )
     elif data == "weltrade_has":
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text=WELTRADE_HAS_ACCOUNT,
-            parse_mode="Markdown",
+        await safe_send_message(
+            context,
+            chat_id,
+            WELTRADE_HAS_ACCOUNT,
             reply_markup=build_vip_contact_keyboard("Weltrade", has_account=True),
         )
     elif data == "weltrade_no":
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text=WELTRADE_NO_ACCOUNT,
-            parse_mode="Markdown",
+        await safe_send_message(
+            context,
+            chat_id,
+            WELTRADE_NO_ACCOUNT,
             reply_markup=build_vip_contact_keyboard("Weltrade", has_account=False),
         )
 
