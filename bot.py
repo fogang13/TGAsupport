@@ -31,7 +31,7 @@ PUPRIME_TRANSFER_IMAGES = [
 # ============================================================
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "8573272152:AAE1Cql3gE8IWCwckmWNXnANToHn-HfHEw4")
-ADMIN_USERNAME = "@TradingGoldAcademy13"
+ADMIN_USERNAME = "@TGA_support"
 
 # Libellés du menu persistant en bas de l'écran
 MENU_FOREX = "💱 Forex"
