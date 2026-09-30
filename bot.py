@@ -31,7 +31,7 @@ MENU_FOREX = "💱 Forex"
 MENU_SYNTH = "📊 Indices Synthétiques"
 
 PERSISTENT_MENU = ReplyKeyboardMarkup(
-    [[KeyboardButton(MENU_FOREX), KeyboardButton(MENU_SYNTH)]],
+    [[KeyboardButton(MENU_SYNTH), KeyboardButton(MENU_FOREX)]],
     resize_keyboard=True,
 )
 
@@ -98,8 +98,8 @@ async def safe_send_message(context, chat_id, text, reply_markup=None):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Affiche le message de bienvenue et le choix Forex / Synthétiques."""
     keyboard = [
-        [InlineKeyboardButton("💱 Forex", callback_data="market_forex")],
         [InlineKeyboardButton("📊 Indices Synthétiques", callback_data="market_synth")],
+        [InlineKeyboardButton("💱 Forex", callback_data="market_forex")],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
@@ -113,8 +113,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def ask_market_choice(context, chat_id):
     keyboard = [
-        [InlineKeyboardButton("💱 Forex", callback_data="market_forex")],
         [InlineKeyboardButton("📊 Indices Synthétiques", callback_data="market_synth")],
+        [InlineKeyboardButton("💱 Forex", callback_data="market_forex")],
     ]
     await safe_send_message(
         context,
