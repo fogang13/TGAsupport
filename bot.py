@@ -1,6 +1,6 @@
 import logging
 import os
-from pathlib import Path
+import urllib.parse
 
 from telegram import (
     InlineKeyboardButton,
@@ -18,24 +18,13 @@ from telegram.ext import (
     filters,
 )
 
-# Dossier où se trouve ce script, pour retrouver les images jointes
-BASE_DIR = Path(__file__).resolve().parent
-PUPRIME_TRANSFER_IMAGES = [
-    BASE_DIR / "puprime_step1_profil.jpg",
-    BASE_DIR / "puprime_step2_profile_menu.jpg",
-    BASE_DIR / "puprime_step3_transfer_ib.jpg",
-]
-
 # ============================================================
 # CONFIGURATION - Modifie uniquement cette section si besoin
 # ============================================================
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "8573272152:AAE1Cql3gE8IWCwckmWNXnANToHn-HfHEw4")
 ADMIN_USERNAME = "@TGA_support"
-# Version échappée pour l'affichage dans du texte Markdown (l'underscore
-# doit être protégé, sinon Telegram l'interprète comme une balise italique
-# et casse le nom d'utilisateur affiché / son lien cliquable).
-ADMIN_USERNAME_MD = ADMIN_USERNAME.replace("_", r"\_")
+ADMIN_USERNAME_RAW = ADMIN_USERNAME.lstrip("@")
 
 # Libellés du menu persistant en bas de l'écran
 MENU_FOREX = "💱 Forex"
@@ -46,101 +35,28 @@ PERSISTENT_MENU = ReplyKeyboardMarkup(
     resize_keyboard=True,
 )
 
-# Nom d'utilisateur sans le "@", nécessaire pour construire les liens t.me
-ADMIN_USERNAME_RAW = ADMIN_USERNAME.lstrip("@")
+WELCOME_TEXT = (
+    "👋 <b>Bienvenue !</b>\n\n"
+    "Ravi de t'avoir parmi nous. Ce bot va t'aider à activer l'accès à mes "
+    "<b>signaux de trading</b>.\n\n"
+    "👉 Souhaites-tu trader sur le <b>Forex</b> ou les <b>Indices Synthétiques</b> ?"
+)
 
 
-def build_vip_contact_keyboard(broker: str, has_account: bool) -> InlineKeyboardMarkup:
+def build_vip_contact_keyboard(marche: str, has_account: bool) -> InlineKeyboardMarkup:
     """Crée un bouton qui pré-remplit un message vers l'admin pour rejoindre le VIP.
 
-    Le message pré-rempli précise le broker (Deriv/Weltrade) et si la
-    personne a déjà un compte ou non, pour que l'admin sache directement.
+    Le message pré-rempli précise le marché/broker (Forex/Deriv/Weltrade) et
+    si la personne a déjà un compte ou non, pour que l'admin sache directement
+    comment continuer la conversation manuellement.
     """
     statut = "j'ai déjà un compte" if has_account else "je n'ai pas de compte"
-    message = f"Je veux rejoindre le VIP {broker} — {statut}"
-    import urllib.parse
-
+    message = f"Je veux rejoindre le VIP {marche} — {statut}"
     encoded_message = urllib.parse.quote(message)
     url = f"https://t.me/{ADMIN_USERNAME_RAW}?text={encoded_message}"
     keyboard = [[InlineKeyboardButton("✉️ Envoyer ma demande VIP", url=url)]]
     return InlineKeyboardMarkup(keyboard)
 
-# ---- Message de bienvenue ----
-WELCOME_TEXT = (
-    "👋 *Bienvenue !*\n\n"
-    "Ravi de t'avoir parmi nous. Ce bot va t'aider à activer l'accès à mes "
-    "*signaux de trading*.\n\n"
-    "👉 Souhaites-tu trader sur le *Forex* ou les *Indices Synthétiques* ?"
-)
-
-# ---- Textes FOREX ----
-FOREX_NO_ACCOUNT = (
-    "🔵 *Forex — Création de compte PU Prime*\n\n"
-    "Afin d'intégrer notre groupe VIP 100% gratuit Forex, tu dois d'abord :\n\n"
-    "1️⃣ Créer un compte *PU Prime* avec notre lien (important) :\n"
-    "👉 https://www.puprime.partners/forex-trading-account/?affid=29071347\n\n"
-    "2️⃣ Faire un dépôt de *100$ minimum* (500$ conseillé)\n\n"
-    "3️⃣ Envoyer la capture d'écran de ton compte contenant le *numéro ID*\n\n"
-    f"Si tu es prêt, on procède à l'ouverture. Envoie ta capture directement à {ADMIN_USERNAME_MD} 👍"
-)
-
-FOREX_HAS_ACCOUNT = (
-    "🔵 *Forex — Taguer un compte PU Prime existant*\n\n"
-    "*Option 1 — par email*\n"
-    "Envoie ce message à *Info@puprime.com* et *erik.guilhem@puprime.com* :\n"
-    "_\"Je veux être tagué sous IB 29071347\"_\n\n"
-    "*Option 2 — manuellement dans ton compte*\n"
-    "1️⃣ Va dans ton *Profil*\n"
-    "2️⃣ Clique sur l'onglet *\"Transfer IB/CPA\"*\n"
-    "3️⃣ Sélectionne le type de partenariat : *IB*\n"
-    "4️⃣ Dans \"New CPA ID / IB Number\" mets : *29071347*\n"
-    "5️⃣ Dans \"Reason for Transfer\" écris : *Nouveau Partenaire*\n"
-    "6️⃣ Clique sur *Submit*\n\n"
-    f"Une fois fait, envoie-moi une confirmation à {ADMIN_USERNAME_MD} pour que je valide ton accès ✅"
-)
-
-# ---- Textes SYNTHETIQUES - DERIV ----
-DERIV_NO_ACCOUNT = (
-    "🟢 *Indices Synthétiques — Deriv — Création de compte*\n\n"
-    "Pour intégrer notre groupe VIP Indices Synthétiques (Deriv), tu dois :\n\n"
-    "1️⃣ Créer un compte *Deriv* avec notre lien (important) :\n"
-    "👉 `https://partners.deriv.com/rx?sidc=3E33DCA0-53E8-4291-A650-73A152DF6BB1&utm_campaign=dynamicworks&utm_medium=affiliate&utm_source=CU27273`\n\n"
-    "2️⃣ Faire un dépôt de *30$ minimum* (250$ conseillé)\n\n"
-    f"3️⃣ Envoie-moi ton *email* de compte en message privé sur Telegram ({ADMIN_USERNAME_MD}) pour vérification\n\n"
-    "Une fois vérifié, tu seras ajouté au groupe VIP ✅"
-)
-
-DERIV_HAS_ACCOUNT = (
-    "🟢 *Indices Synthétiques — Deriv — Taguer un compte existant*\n\n"
-    "Si tu as déjà un compte de trading chez Deriv :\n\n"
-    "1️⃣ Écris au *live chat / support Deriv*\n"
-    "2️⃣ Dis que tu veux taguer ton compte sous le partenaire *FOGANG*\n"
-    "3️⃣ Si un lien est demandé, envoie celui-ci :\n"
-    "👉 `https://partners.deriv.com/rx?sidc=3E33DCA0-53E8-4291-A650-73A152DF6BB1&utm_campaign=dynamicworks&utm_medium=affiliate&utm_source=CU27273`\n\n"
-    f"Une fois fait, envoie-moi une confirmation à {ADMIN_USERNAME_MD} et je t'ajoute au groupe de "
-    "signaux — c'est là-bas qu'on discutera aussi du copy trading 📈"
-)
-
-# ---- Textes SYNTHETIQUES - WELTRADE ----
-WELTRADE_NO_ACCOUNT = (
-    "🟡 *Indices Synthétiques — Weltrade — Création de compte*\n\n"
-    "Pour intégrer le VIP Signaux Weltrade, il te suffit de :\n\n"
-    "1️⃣ Créer ton compte *Weltrade* via notre lien (important) :\n"
-    "👉 https://www.weltrade.com/?r1=ipartner&r2=68084&ibrefid=97343a9a-942c-4671-849a-95b05db4bb27\n\n"
-    "2️⃣ Faire un dépôt de *40$ minimum* (250$ recommandé)\n\n"
-    f"Une fois ton compte créé et le dépôt effectué, envoie-moi la confirmation en message "
-    f"privé sur Telegram ({ADMIN_USERNAME_MD}) pour être ajouté au groupe ✅"
-)
-
-WELTRADE_HAS_ACCOUNT = (
-    "🟡 *Indices Synthétiques — Weltrade — Taguer un compte existant*\n\n"
-    "Si tu as déjà un compte chez Weltrade :\n\n"
-    "1️⃣ Écris au *support Weltrade*\n"
-    "2️⃣ Dis que tu veux être tagué sous *FOGANG*\n"
-    "3️⃣ Envoie ce lien s'ils le demandent :\n"
-    "👉 https://www.weltrade.com/?r1=ipartner&r2=68084&ibrefid=97343a9a-942c-4671-849a-95b05db4bb27\n\n"
-    f"Une fois fait, envoie-moi une confirmation à {ADMIN_USERNAME_MD} et je t'ajoute au groupe de signaux 📈"
-)
 
 # ============================================================
 # LOGGING
@@ -157,18 +73,18 @@ logger = logging.getLogger(__name__)
 
 
 async def safe_send_message(context, chat_id, text, reply_markup=None):
-    """Envoie un message en Markdown, avec repli automatique en texte brut
-    si le Markdown est mal formé (ex: underscores non appariés dans un lien).
-    Cela évite qu'un message reste silencieusement bloqué."""
+    """Envoie un message en HTML, avec repli automatique en texte brut en cas
+    d'échec de formatage, pour qu'un message ne reste jamais silencieusement
+    bloqué."""
     try:
         await context.bot.send_message(
             chat_id=chat_id,
             text=text,
-            parse_mode="Markdown",
+            parse_mode="HTML",
             reply_markup=reply_markup,
         )
     except Exception as exc:  # noqa: BLE001
-        logger.warning("Échec envoi Markdown (%s), repli en texte brut", exc)
+        logger.warning("Échec envoi HTML (%s), repli en texte brut", exc)
         await context.bot.send_message(
             chat_id=chat_id, text=text, reply_markup=reply_markup
         )
@@ -182,13 +98,24 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(
-        WELCOME_TEXT, parse_mode="Markdown", reply_markup=reply_markup
+        WELCOME_TEXT, parse_mode="HTML", reply_markup=reply_markup
     )
-    # Affiche aussi le menu persistant en bas de l'écran, pour permettre de
-    # relancer le parcours sans avoir à remonter chercher /start.
     await update.message.reply_text(
         "Tu peux aussi utiliser les boutons ci-dessous à tout moment 👇",
         reply_markup=PERSISTENT_MENU,
+    )
+
+
+async def ask_market_choice(context, chat_id):
+    keyboard = [
+        [InlineKeyboardButton("💱 Forex", callback_data="market_forex")],
+        [InlineKeyboardButton("📊 Indices Synthétiques", callback_data="market_synth")],
+    ]
+    await safe_send_message(
+        context,
+        chat_id,
+        "👉 Souhaites-tu trader sur le <b>Forex</b> ou les <b>Indices Synthétiques</b> ?",
+        reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
 
@@ -198,27 +125,42 @@ async def persistent_menu_handler(update: Update, context: ContextTypes.DEFAULT_
     chat_id = update.message.chat_id
 
     if text == MENU_FOREX:
-        keyboard = [
-            [InlineKeyboardButton("✅ J'ai déjà un compte", callback_data="forex_has")],
-            [InlineKeyboardButton("🆕 Je n'ai pas de compte", callback_data="forex_no")],
-        ]
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text="💱 *Forex sélectionné*\n\nAs-tu déjà un compte de trading chez PU Prime ?",
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(keyboard),
-        )
+        await send_account_question(context, chat_id, "forex")
     elif text == MENU_SYNTH:
-        keyboard = [
-            [InlineKeyboardButton("Deriv", callback_data="broker_deriv")],
-            [InlineKeyboardButton("Weltrade", callback_data="broker_weltrade")],
-        ]
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text="📊 *Indices Synthétiques sélectionnés*\n\nQuel broker veux-tu utiliser ?",
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(keyboard),
-        )
+        await ask_broker_choice(context, chat_id)
+
+
+async def ask_broker_choice(context, chat_id):
+    keyboard = [
+        [InlineKeyboardButton("Deriv", callback_data="broker_deriv")],
+        [InlineKeyboardButton("Weltrade", callback_data="broker_weltrade")],
+    ]
+    await safe_send_message(
+        context,
+        chat_id,
+        "📊 <b>Indices Synthétiques sélectionnés</b>\n\nQuel broker veux-tu utiliser ?",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
+
+
+async def send_account_question(context, chat_id, marche_key):
+    """Affiche la question 'as-tu déjà un compte ?' pour le marché donné.
+
+    marche_key est une clé technique interne (forex / deriv / weltrade),
+    utilisée pour construire les callback_data suivants.
+    """
+    labels = {"forex": "Forex", "deriv": "Deriv", "weltrade": "Weltrade"}
+    label = labels[marche_key]
+    keyboard = [
+        [InlineKeyboardButton("✅ J'ai déjà un compte", callback_data=f"{marche_key}_has")],
+        [InlineKeyboardButton("🆕 Je n'ai pas de compte", callback_data=f"{marche_key}_no")],
+    ]
+    await safe_send_message(
+        context,
+        chat_id,
+        f"As-tu déjà un compte de trading pour <b>{label}</b> ?",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
 
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -234,91 +176,38 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     # --- Choix du marché ---
     if data == "market_forex":
-        keyboard = [
-            [InlineKeyboardButton("✅ J'ai déjà un compte", callback_data="forex_has")],
-            [InlineKeyboardButton("🆕 Je n'ai pas de compte", callback_data="forex_no")],
-        ]
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text="💱 *Forex sélectionné*\n\nAs-tu déjà un compte de trading chez PU Prime ?",
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(keyboard),
-        )
+        await send_account_question(context, chat_id, "forex")
 
     elif data == "market_synth":
-        keyboard = [
-            [InlineKeyboardButton("Deriv", callback_data="broker_deriv")],
-            [InlineKeyboardButton("Weltrade", callback_data="broker_weltrade")],
-        ]
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text="📊 *Indices Synthétiques sélectionnés*\n\nQuel broker veux-tu utiliser ?",
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(keyboard),
-        )
+        await ask_broker_choice(context, chat_id)
 
     # --- Choix du broker (synthétiques) ---
     elif data == "broker_deriv":
-        keyboard = [
-            [InlineKeyboardButton("✅ J'ai déjà un compte", callback_data="deriv_has")],
-            [InlineKeyboardButton("🆕 Je n'ai pas de compte", callback_data="deriv_no")],
-        ]
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text="🟢 *Deriv sélectionné*\n\nAs-tu déjà un compte de trading chez Deriv ?",
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(keyboard),
-        )
+        await send_account_question(context, chat_id, "deriv")
 
     elif data == "broker_weltrade":
-        keyboard = [
-            [InlineKeyboardButton("✅ J'ai déjà un compte", callback_data="weltrade_has")],
-            [InlineKeyboardButton("🆕 Je n'ai pas de compte", callback_data="weltrade_no")],
-        ]
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text="🟡 *Weltrade sélectionné*\n\nAs-tu déjà un compte de trading chez Weltrade ?",
-            parse_mode="Markdown",
-            reply_markup=InlineKeyboardMarkup(keyboard),
-        )
+        await send_account_question(context, chat_id, "weltrade")
 
-    # --- Réponses finales (les 6 procédures) ---
-    elif data == "forex_has":
-        # Envoie d'abord les captures d'écran de la procédure, dans l'ordre, puis le texte
-        for image_path in PUPRIME_TRANSFER_IMAGES:
-            if image_path.exists():
-                with open(image_path, "rb") as photo:
-                    await context.bot.send_photo(chat_id=chat_id, photo=photo)
-        await safe_send_message(context, chat_id, FOREX_HAS_ACCOUNT)
-    elif data == "forex_no":
-        await safe_send_message(context, chat_id, FOREX_NO_ACCOUNT)
-    elif data == "deriv_has":
+    # --- Réponses finales : bouton message pré-rempli vers l'admin ---
+    elif data in (
+        "forex_has",
+        "forex_no",
+        "deriv_has",
+        "deriv_no",
+        "weltrade_has",
+        "weltrade_no",
+    ):
+        marche_key, statut = data.rsplit("_", 1)
+        labels = {"forex": "Forex", "deriv": "Deriv", "weltrade": "Weltrade"}
+        label = labels[marche_key]
+        has_account = statut == "has"
+
         await safe_send_message(
             context,
             chat_id,
-            DERIV_HAS_ACCOUNT,
-            reply_markup=build_vip_contact_keyboard("Deriv", has_account=True),
-        )
-    elif data == "deriv_no":
-        await safe_send_message(
-            context,
-            chat_id,
-            DERIV_NO_ACCOUNT,
-            reply_markup=build_vip_contact_keyboard("Deriv", has_account=False),
-        )
-    elif data == "weltrade_has":
-        await safe_send_message(
-            context,
-            chat_id,
-            WELTRADE_HAS_ACCOUNT,
-            reply_markup=build_vip_contact_keyboard("Weltrade", has_account=True),
-        )
-    elif data == "weltrade_no":
-        await safe_send_message(
-            context,
-            chat_id,
-            WELTRADE_NO_ACCOUNT,
-            reply_markup=build_vip_contact_keyboard("Weltrade", has_account=False),
+            "✅ Parfait ! Clique sur le bouton ci-dessous pour envoyer ta demande "
+            f"directement à {ADMIN_USERNAME} et continuer avec lui 👇",
+            reply_markup=build_vip_contact_keyboard(label, has_account),
         )
 
 
