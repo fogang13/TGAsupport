@@ -43,8 +43,8 @@ WELCOME_TEXT = (
 )
 
 
-def build_vip_contact_keyboard(marche: str, has_account: bool) -> InlineKeyboardMarkup:
-    """Crée un bouton qui pré-remplit un message vers l'admin pour rejoindre le VIP.
+def build_vip_contact_url(marche: str, has_account: bool) -> str:
+    """Construit l'URL Telegram qui pré-remplit un message vers l'admin.
 
     Le message pré-rempli précise le marché/broker (Forex/Deriv/Weltrade) et
     si la personne a déjà un compte ou non, pour que l'admin sache directement
@@ -53,7 +53,12 @@ def build_vip_contact_keyboard(marche: str, has_account: bool) -> InlineKeyboard
     statut = "j'ai déjà un compte" if has_account else "je n'ai pas de compte"
     message = f"Je veux rejoindre le VIP {marche} — {statut}"
     encoded_message = urllib.parse.quote(message)
-    url = f"https://t.me/{ADMIN_USERNAME_RAW}?text={encoded_message}"
+    return f"https://t.me/{ADMIN_USERNAME_RAW}?text={encoded_message}"
+
+
+def build_vip_contact_keyboard(marche: str, has_account: bool) -> InlineKeyboardMarkup:
+    """Crée un bouton qui pré-remplit un message vers l'admin pour rejoindre le VIP."""
+    url = build_vip_contact_url(marche, has_account)
     keyboard = [[InlineKeyboardButton("✉️ Envoyer ma demande VIP", url=url)]]
     return InlineKeyboardMarkup(keyboard)
 
@@ -151,14 +156,21 @@ async def send_account_question(context, chat_id, marche_key):
     """
     labels = {"forex": "Forex", "deriv": "Deriv", "weltrade": "Weltrade"}
     label = labels[marche_key]
+
+    # Boutons URL directs : ouvrent tout de suite Telegram vers l'admin avec
+    # le message pré-rempli, sans étape intermédiaire dans le bot.
+    url_has = build_vip_contact_url(label, has_account=True)
+    url_no = build_vip_contact_url(label, has_account=False)
     keyboard = [
-        [InlineKeyboardButton("✅ J'ai déjà un compte", callback_data=f"{marche_key}_has")],
-        [InlineKeyboardButton("🆕 Je n'ai pas de compte", callback_data=f"{marche_key}_no")],
+        [InlineKeyboardButton("✅ J'ai déjà un compte", url=url_has)],
+        [InlineKeyboardButton("🆕 Je n'ai pas de compte", url=url_no)],
     ]
     await safe_send_message(
         context,
         chat_id,
-        f"As-tu déjà un compte de trading pour <b>{label}</b> ?",
+        f"As-tu déjà un compte de trading pour <b>{label}</b> ?\n\n"
+        f"Clique sur l'option qui te correspond pour envoyer ta demande directement à "
+        f"{ADMIN_USERNAME} et continuer avec lui 👇",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
@@ -188,27 +200,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     elif data == "broker_weltrade":
         await send_account_question(context, chat_id, "weltrade")
 
-    # --- Réponses finales : bouton message pré-rempli vers l'admin ---
-    elif data in (
-        "forex_has",
-        "forex_no",
-        "deriv_has",
-        "deriv_no",
-        "weltrade_has",
-        "weltrade_no",
-    ):
-        marche_key, statut = data.rsplit("_", 1)
-        labels = {"forex": "Forex", "deriv": "Deriv", "weltrade": "Weltrade"}
-        label = labels[marche_key]
-        has_account = statut == "has"
-
-        await safe_send_message(
-            context,
-            chat_id,
-            "✅ Parfait ! Clique sur le bouton ci-dessous pour envoyer ta demande "
-            f"directement à {ADMIN_USERNAME} et continuer avec lui 👇",
-            reply_markup=build_vip_contact_keyboard(label, has_account),
-        )
+    # NOTE : les boutons "J'ai déjà un compte" / "Je n'ai pas de compte" sont
+    # maintenant des boutons URL directs (voir send_account_question) qui
+    # ouvrent Telegram vers l'admin sans repasser par ce handler.
 
 
 async def restart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
